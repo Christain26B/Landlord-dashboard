@@ -2,9 +2,17 @@ import pandas as pd
 import numpy as np
 from googlemaps import Client
 import time
+import os
+from dotenv import load_dotenv
 
-# Google Maps API key
-GOOGLE_API_KEY = "AIzaSyCJIh35ohU0-Zlv6kXpylWnJVH9ppCAKbg"
+# Load environment variables
+load_dotenv()
+
+# Get API key from environment variable
+GOOGLE_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY')
+
+if not GOOGLE_API_KEY:
+    raise ValueError("Google Maps API key not found in environment variables")
 
 def geocode_address(address):
     """Convert a single address to latitude and longitude"""

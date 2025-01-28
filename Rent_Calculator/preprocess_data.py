@@ -7,7 +7,7 @@ def preprocess_and_save():
     os.makedirs('data', exist_ok=True)
     
     print("Loading original dataset...")
-    df = pd.read_csv('/Users/cezarscerbina/Downloads/rent_ads_rightmove_extended.csv')
+    df = pd.read_csv('data/rent_ads_rightmove_extended.csv')
     
     print("Processing addresses...")
     location_features = process_dataset(df)

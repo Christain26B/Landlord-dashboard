@@ -1,0 +1,15 @@
+# Ignore original dataset
+rent_ads_rightmove_extended.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class 
+
+# Environment
+.env
+venv/
+
+# Keep processed data and models
+!data/processed_dataset.csv
+!model/*.pkl

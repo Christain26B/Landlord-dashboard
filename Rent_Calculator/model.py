@@ -98,10 +98,14 @@ def train_rent_model(data_path='data/processed_dataset.csv'):
     # Calculate error metrics
     mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
     rmse = np.sqrt(np.mean((y_test - y_pred) ** 2))
+    mse = np.mean((y_test - y_pred) ** 2)
+    r2 = 1 - (np.sum((y_test - y_pred) ** 2) / np.sum((y_test - y_test.mean()) ** 2))
     
     print("\nModel Performance:")
-    print(f"MAPE: {mape:.2f}%")
+    print(f"R-squared: {r2:.4f}")
+    print(f"MSE: £{mse:.2f}")
     print(f"RMSE: £{rmse:.2f}")
+    print(f"MAPE: {mape:.2f}%")
     
     # Feature importance
     feature_importance = pd.DataFrame({
