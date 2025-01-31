@@ -11,5 +11,5 @@ __pycache__/
 venv/
 
 # Keep processed data and models
-!data/processed_dataset.csv
+!Rent_Calculator/data/processed_dataset.csv
 !model/*.pkl
