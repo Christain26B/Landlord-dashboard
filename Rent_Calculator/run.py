@@ -18,36 +18,36 @@ def get_user_input():
     
     # Get address
     address = input("\nEnter the property address: ")
-    
+
     # Get property type
     print("\nProperty Types available:")
-    print("1. Flat")
-    print("2. House")
-    print("3. Studio")
-    property_type = input("Enter the property type (1-3): ")
-    property_type_map = {'1': 'Flat', '2': 'House', '3': 'Studio'}
+    property_types = [
+        "Bungalow Property", "Converted Flat", "Detached Bungalow", "Detached House",
+        "Detached Property", "End Terrace Bungalow", "End Terrace House",
+        "End Terrace Property", "Flat/Maisonette", "Mid Terrace Bungalow",
+        "Mid Terrace House", "Mid Terrace Property", "Purpose Built Flat",
+        "Semi-Detached Bungalow", "Semi-Detached House", "Semi-Detached Property",
+        "Terrace Property", "Terraced", "Terraced Bungalow"
+    ]
+    for i, ptype in enumerate(property_types, 1):
+        print(f"{i}. {ptype}")
+    property_type = input("Enter the property type (1-19): ")
+    property_type_map = {str(i): ptype for i, ptype in enumerate(property_types, 1)}
     property_type = property_type_map.get(property_type, 'Flat')
-    
-    # Get furnishing type
-    print("\nFurnishing Types available:")
-    print("1. Furnished")
-    print("2. Unfurnished")
-    print("3. Part Furnished")
-    furnish_type = input("Enter the furnishing type (1-3): ")
-    furnish_map = {'1': 'Furnished', '2': 'Unfurnished', '3': 'Part Furnished'}
-    furnish_type = furnish_map.get(furnish_type, 'Furnished')
-    
+
     # Get bedrooms and bathrooms
     bedrooms = int(input("\nEnter number of bedrooms: "))
     bathrooms = int(input("Enter number of bathrooms: "))
+    livingrooms = int(input("Enter number of living rooms: "))
     
     return {
+        'bathrooms': bathrooms,
+        'bedrooms': bedrooms,
         'address': address,
-        'PROPERTY TYPE': property_type,
-        'Furnish Type': furnish_type,
-        'BEDROOMS': bedrooms,
-        'BATHROOMS': bathrooms
+        'livingRooms': livingrooms,
+        'propertyType': property_type,
     }
+
 
 def predict_rent(property_info):
     """Process address and make prediction"""
@@ -65,32 +65,31 @@ def predict_rent(property_info):
         property_data = {
             'latitude': location['lat'],
             'longitude': location['lng'],
-            'PROPERTY TYPE': property_info['PROPERTY TYPE'],
-            'Furnish Type': property_info['Furnish Type'],
-            'BEDROOMS': property_info['BEDROOMS'],
-            'BATHROOMS': property_info['BATHROOMS']
+            'propertyType': property_info['propertyType'],
+            'livingRooms': property_info['livingRooms'],
+            'bedrooms': property_info['bedrooms'],
+            'bathrooms': property_info['bathrooms']
         }
         
         # Create DataFrame with correct feature order
         X_new = pd.DataFrame(columns=features)
         X_new.loc[0] = 0  # Initialize with zeros
-        
+
         # Fill in the basic features
-        for col in ['latitude', 'longitude', 'BEDROOMS', 'BATHROOMS']:
+        for col in ['latitude', 'longitude', 'bedrooms', 'bathrooms', 'livingRooms']:
             X_new[col] = property_data[col]
-        
+
         # Encode categorical features
-        X_new['PROPERTY TYPE'] = encoders['PROPERTY TYPE'].transform([property_data['PROPERTY TYPE']])[0]
-        X_new['Furnish Type'] = encoders['Furnish Type'].transform([property_data['Furnish Type']])[0]
-        
+        X_new['propertyType'] = encoders['propertyType'].transform([property_data['propertyType']])[0]
+
         # Add feature interactions and polynomial features
-        X_new['BEDS_BATHS'] = X_new['BEDROOMS'] * X_new['BATHROOMS']
+        X_new['BEDS_BATHS'] = X_new['bedrooms'] * X_new['bathrooms']
         X_new['LOCATION'] = X_new['latitude'] * X_new['longitude']
-        X_new['BEDROOMS_SQ'] = X_new['BEDROOMS'] ** 2
-        X_new['BATHROOMS_SQ'] = X_new['BATHROOMS'] ** 2
-        
+        X_new['BEDROOMS_SQ'] = X_new['bedrooms'] ** 2
+        X_new['BATHROOMS_SQ'] = X_new['bathrooms'] ** 2
+
         # Scale numeric features
-        numeric_features = ['BEDROOMS', 'BATHROOMS', 'latitude', 'longitude']
+        numeric_features = ['bathrooms', 'bedrooms', 'latitude', 'longitude', 'livingRooms']
         X_new[numeric_features] = scaler.transform(X_new[numeric_features])
         
         # Make prediction (log scale)

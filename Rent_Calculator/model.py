@@ -6,7 +6,7 @@ import numpy as np
 import joblib
 import os
 
-def train_rent_model(data_path='data/processed_dataset.csv'):
+def train_rent_model(data_path='data/kaggle_london_house_price_data.csv'):
     # Create model directory if it doesn't exist
     os.makedirs('model', exist_ok=True)
     
@@ -14,61 +14,64 @@ def train_rent_model(data_path='data/processed_dataset.csv'):
     print("Loading preprocessed dataset...")
     df = pd.read_csv(data_path)
     
-    # Remove outliers using IQR method
-    print("Removing outliers...")
-    Q1 = df['rent'].quantile(0.05)
-    Q3 = df['rent'].quantile(0.95)
-    IQR = Q3 - Q1
-    df = df[
-        (df['rent'] >= Q1 - 1.5 * IQR) & 
-        (df['rent'] <= Q3 + 1.5 * IQR)
-    ]
+    # # Remove outliers using IQR method
+    # print("Removing outliers...")
+    # Q1 = df['rent'].quantile(0.05)
+    # Q3 = df['rent'].quantile(0.95)
+    # IQR = Q3 - Q1
+    # df = df[
+    #     (df['rent'] >= Q1 - 1.5 * IQR) &
+    #     (df['rent'] <= Q3 + 1.5 * IQR)
+    # ]
     
     # Create label encoders dictionary
     label_encoders = {}
     
     # Encode categorical columns
-    categorical_columns = ['PROPERTY TYPE', 'Furnish Type']
+    categorical_columns = ['propertyType']
     for col in categorical_columns:
         if col in df.columns:
             label_encoders[col] = LabelEncoder()
             df[col] = label_encoders[col].fit_transform(df[col].astype(str))
+
+        # Prepare initial features
+        feature_columns = ['latitude', 'longitude', 'bathrooms', 'bedrooms', 'livingRooms', 'propertyType']
+        X = df[feature_columns].copy()
     
-    # Prepare initial features
-    feature_columns = ['latitude', 'longitude', 'PROPERTY TYPE', 
-                      'Furnish Type', 'BEDROOMS', 'BATHROOMS']
-    X = df[feature_columns].copy()
-    
+
     # Use RobustScaler instead of StandardScaler for better handling of outliers
-    numeric_features = ['BEDROOMS', 'BATHROOMS', 'latitude', 'longitude']
+    numeric_features = ['bathrooms', 'bedrooms', 'latitude', 'longitude', 'livingRooms']
     scaler = RobustScaler()
     X[numeric_features] = scaler.fit_transform(X[numeric_features])
-    
+
     # Add feature interactions
     print("Adding feature interactions...")
-    X['BEDS_BATHS'] = X['BEDROOMS'] * X['BATHROOMS']
+    X['BEDS_BATHS'] = X['bedrooms'] * X['bathrooms']
     X['LOCATION'] = X['latitude'] * X['longitude']
-    
-    # Add polynomial features for BEDROOMS and BATHROOMS
-    X['BEDROOMS_SQ'] = X['BEDROOMS'] ** 2
-    X['BATHROOMS_SQ'] = X['BATHROOMS'] ** 2
-    
+
+    # Add polynomial features for bedrooms and bathrooms
+    X['BEDROOMS_SQ'] = X['bedrooms'] ** 2
+    X['BATHROOMS_SQ'] = X['bathrooms'] ** 2
+
     # Target variable
-    y = df['rent']
-    
+    y = df['rentEstimate_currentPrice']
+
+    # Check for NaN, infinity, or too large values in the target variable
+    y = y.replace([np.inf, -np.inf, np.nan], 0)
+
     # Log transform the target variable
     y_log = np.log1p(y)
-    
+
     # Split into train, validation, and test sets
     print("Splitting data into train, validation, and test sets...")
     X_temp, X_test, y_temp, y_test = train_test_split(X, y_log, test_size=0.2, random_state=42)
     X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=0.2, random_state=42)
-    
+
     # Store training data globally for prediction intervals
     global X_train_global, y_train_global
     X_train_global = X_train
     y_train_global = y_train
-    
+
     # Train model with tuned parameters
     print("Training model...")
     model = XGBRegressor(
@@ -158,24 +161,24 @@ def predict_rent_with_range(model, scaler, encoders, features, property_data):
     X_new.loc[0] = 0  # Initialize with zeros
     
     # Fill in the basic features
-    for col in ['latitude', 'longitude', 'BEDROOMS', 'BATHROOMS']:
+    for col in ['latitude', 'longitude', 'bathrooms', 'bedrooms', 'livingRooms']:
         X_new[col] = property_data[col]
-    
+
     # Encode categorical features
-    X_new['PROPERTY TYPE'] = encoders['PROPERTY TYPE'].transform([property_data['PROPERTY TYPE']])[0]
-    X_new['Furnish Type'] = encoders['Furnish Type'].transform([property_data['Furnish Type']])[0]
-    
+    X_new['propertyType'] = encoders['propertyType'].transform([property_data['propertyType']])[0]
+
     # Add feature interactions
-    X_new['BEDS_BATHS'] = X_new['BEDROOMS'] * X_new['BATHROOMS']
+    X_new['BEDS_BATHS'] = X_new['bedrooms'] * X_new['bathrooms']
     X_new['LOCATION'] = X_new['latitude'] * X_new['longitude']
-    
+
     # Scale numeric features
-    numeric_features = ['BEDROOMS', 'BATHROOMS', 'latitude', 'longitude']
+    numeric_features = ['bathrooms', 'bedrooms', 'latitude', 'longitude', 'livingRooms']
     X_new[numeric_features] = scaler.transform(X_new[numeric_features])
-    
+
+
     # Get predictions with intervals
     pred, lower, upper = predict_with_intervals(model, X_new)
-    
+
     return {
         'predicted_rent': round(pred[0], 2),
         'lower_bound': round(lower[0], 2),
@@ -188,12 +191,12 @@ if __name__ == "__main__":
     
     # Example prediction with range
     sample_property = {
-        'BEDROOMS': 2,
-        'BATHROOMS': 1,
+        'bathrooms': 1,
+        'bedrooms': 2,
         'latitude': 51.5074,
         'longitude': -0.1278,
-        'PROPERTY TYPE': 'Flat',
-        'Furnish Type': 'Furnished'
+        'livingRooms': 1,
+        'propertyType': 'Purpose Built Flat',
     }
     
     result = predict_rent_with_range(model, scaler, encoders, features, sample_property)
